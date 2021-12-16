@@ -1,9 +1,11 @@
-require("dotenv").config();
-
-require("@nomiclabs/hardhat-etherscan");
+require("@nomiclabs/hardhat-ethers");
+require('@openzeppelin/hardhat-upgrades');
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-web3");
+require("@nomiclabs/hardhat-etherscan");
+require("dotenv").config();
 require("hardhat-gas-reporter");
-require("solidity-coverage");
+
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -32,16 +34,30 @@ module.exports = {
     }
   },
   networks: {
-    ropsten: {
-      url: process.env.ROPSTEN_URL || "",
-      // chainId: 
-      gasPrice: process.env.GAS_PRICE,
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    ropsten_testnet: {
+      url: process.env.ROPSTEN_TESTNET_URL,
+      chainId: 3,
+      gasPrice: 20000000000,
+      accounts: [process.env.DEPLOYER_PRIVATE_KEY],
     },
-  },
-  gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
-    currency: "USD",
+    rinkeby_testnet: {
+      url: process.env.RINKEBY_TESTNET_URL,
+      chainId: 4,
+      gasPrice: 20000000000,
+      accounts: [process.env.DEPLOYER_PRIVATE_KEY],
+    },
+    polygon_testnet: {
+      url: process.env.POLYGON_TESTNET_URL,
+      chainId: 80001,
+      gasPrice: 20000000000,
+      accounts: [process.env.DEPLOYER_PRIVATE_KEY],
+    },
+    bsc: {
+      url: process.env.BSC_TESTNET_URL,
+      chainId: 97,
+      gasPrice: 20000000000,
+      accounts: [process.env.DEPLOYER_PRIVATE_KEY],
+    },
   },
   paths: {
     sources: "./contracts",
@@ -51,8 +67,5 @@ module.exports = {
   },
   mocha: {
     timeout: 20000
-  },
-  etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
   },
 };

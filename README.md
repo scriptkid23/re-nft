@@ -15,7 +15,7 @@ npx hardhat node
 npx hardhat help
 REPORT_GAS=true npx hardhat test
 npx hardhat coverage
-npx hardhat run scripts/deploy.js
+npx hardhat run scripts/deploy.js --network <network name in hardhat.config.js>
 node scripts/deploy.js
 npx eslint '**/*.js'
 npx eslint '**/*.js' --fix
