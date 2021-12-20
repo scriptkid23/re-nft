@@ -42,7 +42,6 @@ interface IReNft is IERC721Receiver{
     function lend(
         address[] memory _nft,
         uint256[] memory _tokenId,
-        uint256[] memory _lendAmounts,
         uint8[] memory _maxRentDuration,
         bytes4[] memory _dailyRentPrice,
         bytes4[] memory _nftPrice,

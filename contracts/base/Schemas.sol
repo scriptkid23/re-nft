@@ -6,7 +6,6 @@ struct Lending {
     uint8 maxRentDuration;
     bytes4 dailyRentPrice;
     bytes4 nftPrice;
-    uint8 lentAmount;
     IResolver.PaymentToken paymentToken;
 }
 struct Renting {
@@ -16,7 +15,15 @@ struct Renting {
 }
 struct LendingRenting {
     Lending lending;
-    Renting rending;
+    Renting renting;
 }
-
-
+struct CallData {
+    address[] nfts;
+    uint256[] tokenIds;
+    uint8[] maxRentDurations;
+    bytes4[] dailyRentPrices;
+    bytes4[] nftPrices;
+    uint256[] lendingIds;
+    uint8[] rentDurations;
+    IResolver.PaymentToken[] paymentTokens;
+}
