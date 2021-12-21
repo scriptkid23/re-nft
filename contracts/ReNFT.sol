@@ -4,13 +4,13 @@ import "./interface/IReNFT.sol";
 import "./interface/IResolver.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";g
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./base/Schemas.sol";
 
-contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable, ReentrancyGuard {
+contract ReNFT is ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for ERC20;
     IResolver private resolver;
     address payable private beneficiary;
@@ -92,15 +92,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable, ReentrancyGuard {
                 _paymentTokens[i]
             );
             lendingId++;
-            if (is721(_nfts[i])) {
-                IERC721(_nfts[i]).transferFrom(
-                    msg.sender,
-                    address(this),
-                    _tokenIds[i]
-                );
-            } else {
-                revert("ReNFT::unsupported token type");
-            }
+            _safeTransfer(_nfts[i], _tokenIds[i], msg.sender, address(this));
         }
     }
 
@@ -458,7 +450,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable, ReentrancyGuard {
             maxRentPayment,
             IResolver.PaymentToken(paymentTokenIx)
         );
-        // do renter trả muộn hoặc không trả sẽ lấy số tiền thế chấp nft của renter để ra giá trị cuối 
+        // do renter trả muộn hoặc không trả sẽ lấy số tiền thế chấp nft của renter để ra giá trị cuối
         uint256 finalAmt = maxRentPayment + nftPrice;
 
         require(maxRentPayment > 0, "ReNFT::collateral plus rent is zero");
