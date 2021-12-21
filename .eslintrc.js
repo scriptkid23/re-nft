@@ -19,4 +19,7 @@ module.exports = {
       globals: { task: true },
     },
   ],
+  rules: {
+    "not-rely-on-time": "error"
+  }
 };
