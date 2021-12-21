@@ -14,6 +14,19 @@ const MAX_RENT_DURATION = 1; // day
 const DAILY_RENT_PRICE = packPrice(0.5); // 2 BNB
 const NFT_PRICE = packPrice(3); // 3 BNB
 
+const DP18 = ethers.utils.parseEther("1");
+const ERC20_SEND_AMT = ethers.utils.parseEther("100000000");
+
+const setup = deployments.createFixture(async () => {
+  await deployments.fixture(["Test", "Development"]);
+  const { deployer, beneficiary, renter, lender } = await getNamedAccounts();
+  const signers = await ethers.getSigners();
+  const resolver = ((await ethers.getContract(
+    "Resolver"
+  )));
+  const bnb = ((await ethers.getContract("BNB")));
+
+})
 describe("ReNFT contract", function () {
   let owner;
   let addr1;
@@ -53,6 +66,7 @@ describe("ReNFT contract", function () {
       0,
       ResolverContract.address
     );
+    console.log("StoreContract")
   });
   describe("Lending", function () {
     it("check owner NFT", async function () {
@@ -72,7 +86,7 @@ describe("ReNFT contract", function () {
         [NFT_PRICE, NFT_PRICE],
         [1,1]
       );
-      // expect(await StoreContract.ownerOf(1), "ReNFT not owner").to.eq(addr1.address);
+      expect(await StoreContract.ownerOf(1), "ReNFT not owner").to.eq(ReNFTContract.address);
     });
   });
   describe("Renting", function () {});
