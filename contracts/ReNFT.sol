@@ -451,16 +451,19 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable, ReentrancyGuard {
             _lendingRenting.lending.dailyRentPrice,
             scale
         );
+        // số tiền thuê tối đa của renter
         uint256 maxRentPayment = rentPrice *
             _lendingRenting.renting.rentDuration;
         uint256 takenFee = takeFee(
             maxRentPayment,
             IResolver.PaymentToken(paymentTokenIx)
         );
+        // do renter trả muộn hoặc không trả sẽ lấy số tiền thế chấp nft của renter để ra giá trị cuối 
         uint256 finalAmt = maxRentPayment + nftPrice;
 
         require(maxRentPayment > 0, "ReNFT::collateral plus rent is zero");
 
+        // beneficiary sẽ nhận được khoản phí từ lender
         paymentToken.safeTransfer(
             _lendingRenting.lending.lender,
             finalAmt - takenFee

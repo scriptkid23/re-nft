@@ -1,18 +1,22 @@
 module.exports = {
+  root: true,
+  parser: "@babel/eslint-parser",
+  parserOptions: {
+    ecmaVersion: 2020, // Allows for the parsing of modern ECMAScript features
+    sourceType: "module", // Allows for the use of imports
+  },
   env: {
     browser: false,
     es2021: true,
     mocha: true,
     node: true,
+    commonjs: true,
   },
+  plugins: ["prettier", "import"],
   extends: [
-    "standard",
-    "plugin:prettier/recommended",
-    "plugin:node/recommended",
+    "eslint:recommended",
+    "prettier"
   ],
-  parserOptions: {
-    ecmaVersion: 12,
-  },
   overrides: [
     {
       files: ["hardhat.config.js"],
@@ -20,6 +24,8 @@ module.exports = {
     },
   ],
   rules: {
-    "not-rely-on-time": "error"
-  }
+    "compiler-version": ["error", "^0.8.0"],
+    "func-visibility": ["warn", { "ignoreConstructors": true }],
+    "not-rely-on-time": ["off"]
+  },
 };
