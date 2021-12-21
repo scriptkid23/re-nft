@@ -179,20 +179,52 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         uint256[] memory _lendingIds
     ) external override whenNotPaused {}
 
+    function _handleStopLending(
+        address[] memory _nfts,
+        uint256[] memory _tokenIds,
+        uint256[] memory _lendingIds
+    ) private {
+        for (uint256 i = 0; i < _nfts.length; i++) {
+            LendingRenting storage item = lendingRenting[
+                keccak256(
+                    abi.encodePacked(_nfts[i], _tokenIds[i], _lendingIds[i])
+                )
+            ];
+            ensureIsNotNull(item.lending);
+            ensureIsNull(item.renting);
+            ensureIsStoppable(item.lending, msg.sender);
+
+            emit LendingStopped(_lendingIds[i], uint32(block.timestamp));
+            delete item.lending;
+            _safeTransfer(_nfts[i], _tokenIds[i], address(this), msg.sender);
+        }
+    }
+
     function claimCollateral(
         address[] memory _nfts,
         uint256[] memory _tokenIds,
         uint256[] memory _lendingIds
     ) external override whenNotPaused {}
+    function _handleClaimCollateral(address[] memory _nfts,
+        uint256[] memory _tokenIds,
+        uint256[] memory _lendingIds) private {
+            for(uint256 i = 0; i < _nfts.length; i++){
+                LendingRenting storage item = lendingRenting[keccak256(abi.encodePacked(_nfts[i], _tokenIds[i], _lendingIds[i]))];
+                ensureIsNotNull(item.lending);
+                ensureIsNotNull(item.renting);
+                ensureIsClaimable(item.renting, block.timestamp);
+                _distributeClaimPayment(item);
+                emit CollateralClaimed(_lendingIds[i], uint32(block.timestamp));
 
+                delete item.lending;
+                delete item.renting;
+            }
+        }
     function ensureIsNotZeroAddr(address _addr) private pure {
         require(_addr != address(0), "ReNFT::zero address");
     }
 
     // Util function
-    function is721(address _nft) private view returns (bool) {
-        return IERC165(_nft).supportsInterface(type(IERC721).interfaceId);
-    }
 
     function ensureIsZeroAddr(address _addr) private pure {
         require(_addr == address(0), "ReNFT::not a zero address");
@@ -259,6 +291,13 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         );
     }
 
+    function ensureIsStoppable(Lending memory _lending, address _msgSender)
+        private
+        pure
+    {
+        require(_lending.lender == _msgSender, "ReNFT::not lender");
+    }
+
     function isPastReturnDate(Renting memory _renting, uint256 _now)
         private
         pure
@@ -280,6 +319,15 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         require(
             _rentDuration <= _lending.maxRentDuration,
             "ReNFT::exceeds allowed max"
+        );
+    }
+    function ensureIsClaimable(Renting memory _renting, uint256 _blockTimestamp)
+        private
+        pure
+    {
+        require(
+            isPastReturnDate(_renting, _blockTimestamp),
+            "ReNFT::return date not passed"
         );
     }
 
@@ -330,7 +378,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
             _lendingRenting.lending.paymentToken
         );
 
-        sendLenderAmt -= takenFee;  // số tiền thực tế mà lender nhận được
+        sendLenderAmt -= takenFee; // số tiền thực tế mà lender nhận được
         sendRenterAmt += nftPrice; // giá tài sản thế chấp được trả lại renter
 
         ERC20(paymentToken).safeTransfer(
@@ -340,6 +388,33 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         ERC20(paymentToken).safeTransfer(
             _lendingRenting.renting.renter,
             sendRenterAmt
+        );
+    }
+    function _distributeClaimPayment(LendingRenting memory _lendingRenting)
+        private
+    {
+        uint8 paymentTokenIx = uint8(_lendingRenting.lending.paymentToken);
+        ensureTokenNotSentinel(paymentTokenIx);
+        ERC20 paymentToken = ERC20(resolver.getPaymentToken(paymentTokenIx));
+
+        uint256 decimals = ERC20(paymentToken).decimals();
+        uint256 scale = 10**decimals;
+        uint256 nftPrice =
+            1 *
+                unpackPrice(_lendingRenting.lending.nftPrice, scale);
+        uint256 rentPrice =
+            unpackPrice(_lendingRenting.lending.dailyRentPrice, scale);
+        uint256 maxRentPayment =
+            rentPrice * _lendingRenting.renting.rentDuration;
+        uint256 takenFee =
+            takeFee(maxRentPayment, IResolver.PaymentToken(paymentTokenIx));
+        uint256 finalAmt = maxRentPayment + nftPrice;
+
+        require(maxRentPayment > 0, "ReNFT::collateral plus rent is zero");
+
+        paymentToken.safeTransfer(
+            _lendingRenting.lending.lender,
+            finalAmt - takenFee
         );
     }
 
@@ -366,5 +441,22 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         uint256 price = w + d;
 
         return price;
+    }
+
+    function _safeTransfer(
+        address _nft,
+        uint256 _tokenId,
+        address _from,
+        address _to
+    ) private {
+        if (is721(_nft)) {
+            IERC721(_nft).safeTransferFrom(_from, _to, _tokenId);
+        } else {
+            revert("Unsupported token type");
+        }
+    }
+
+    function is721(address _nft) private view returns (bool) {
+        return IERC165(_nft).supportsInterface(type(IERC721).interfaceId);
     }
 }
