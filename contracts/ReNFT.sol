@@ -7,9 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./base/Schemas.sol";
 
-contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
+contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for ERC20;
     IResolver private resolver;
     address payable private beneficiary;
@@ -18,12 +19,17 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
     uint256 private constant SECONDS_IN_DAY = 86400;
 
     mapping(bytes32 => LendingRenting) private lendingRenting;
-    
-    constructor(address payable _beneficiary, uint256 _rentFee, address _resolver ){
+
+    constructor(
+        address payable _beneficiary,
+        uint256 _rentFee,
+        address _resolver
+    ) {
         resolver = IResolver(_resolver);
         beneficiary = _beneficiary;
         rentFee = _rentFee;
     }
+
     // TODO: create function lending
     function lend(
         address[] memory _nfts,
@@ -32,7 +38,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         bytes4[] memory _dailyRentPrices,
         bytes4[] memory _nftPrices,
         IResolver.PaymentToken[] memory _paymentTokens
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         _handleLend(
             _nfts,
             _tokenIds,
@@ -104,7 +110,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         uint256[] memory _tokenIds,
         uint256[] memory _lendingIds,
         uint8[] memory _rentDurations
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         _handleRent(_nfts, _tokenIds, _lendingIds, _rentDurations);
     }
 
@@ -153,7 +159,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         address[] memory _nfts,
         uint256[] memory _tokenIds,
         uint256[] memory _lendingIds
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         _handleReturn(_nfts, _tokenIds, _lendingIds);
     }
 
@@ -182,7 +188,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         address[] memory _nfts,
         uint256[] memory _tokenIds,
         uint256[] memory _lendingIds
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         _handleStopLending(_nfts, _tokenIds, _lendingIds);
     }
 
@@ -211,22 +217,53 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         address[] memory _nfts,
         uint256[] memory _tokenIds,
         uint256[] memory _lendingIds
-    ) external override whenNotPaused {}
-    function _handleClaimCollateral(address[] memory _nfts,
-        uint256[] memory _tokenIds,
-        uint256[] memory _lendingIds) private {
-            for(uint256 i = 0; i < _nfts.length; i++){
-                LendingRenting storage item = lendingRenting[keccak256(abi.encodePacked(_nfts[i], _tokenIds[i], _lendingIds[i]))];
-                ensureIsNotNull(item.lending);
-                ensureIsNotNull(item.renting);
-                ensureIsClaimable(item.renting, block.timestamp);
-                _distributeClaimPayment(item);
-                emit CollateralClaimed(_lendingIds[i], uint32(block.timestamp));
+    ) external override nonReentrant whenNotPaused {
+        _handleClaimCollateral(_nfts, _tokenIds, _lendingIds);
+    }
 
-                delete item.lending;
-                delete item.renting;
-            }
+    function _handleClaimCollateral(
+        address[] memory _nfts,
+        uint256[] memory _tokenIds,
+        uint256[] memory _lendingIds
+    ) private {
+        for (uint256 i = 0; i < _nfts.length; i++) {
+            LendingRenting storage item = lendingRenting[
+                keccak256(
+                    abi.encodePacked(_nfts[i], _tokenIds[i], _lendingIds[i])
+                )
+            ];
+            ensureIsNotNull(item.lending);
+            ensureIsNotNull(item.renting);
+            ensureIsClaimable(item.renting, block.timestamp);
+            _distributeClaimPayment(item);
+            emit CollateralClaimed(_lendingIds[i], uint32(block.timestamp));
+
+            delete item.lending;
+            delete item.renting;
         }
+    }
+
+    function setRentFee(uint256 _rentFee) external nonReentrant onlyOwner {
+        require(_rentFee < 10000, "fee exceeds 100");
+        rentFee = _rentFee;
+    }
+
+    function setBeneficiary(address payable _newBeneficiary)
+        external
+        nonReentrant
+        onlyOwner
+    {
+        beneficiary = _newBeneficiary;
+    }
+
+    function setPaused() public nonReentrant onlyOwner {
+        _pause();
+    }
+
+    function setUnPaused() public nonReentrant onlyOwner {
+        _unpause();
+    }
+
     function ensureIsNotZeroAddr(address _addr) private pure {
         require(_addr != address(0), "ReNFT::zero address");
     }
@@ -328,6 +365,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
             "ReNFT::exceeds allowed max"
         );
     }
+
     function ensureIsClaimable(Renting memory _renting, uint256 _blockTimestamp)
         private
         pure
@@ -397,6 +435,7 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
             sendRenterAmt
         );
     }
+
     function _distributeClaimPayment(LendingRenting memory _lendingRenting)
         private
     {
@@ -406,15 +445,18 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
 
         uint256 decimals = ERC20(paymentToken).decimals();
         uint256 scale = 10**decimals;
-        uint256 nftPrice =
-            1 *
-                unpackPrice(_lendingRenting.lending.nftPrice, scale);
-        uint256 rentPrice =
-            unpackPrice(_lendingRenting.lending.dailyRentPrice, scale);
-        uint256 maxRentPayment =
-            rentPrice * _lendingRenting.renting.rentDuration;
-        uint256 takenFee =
-            takeFee(maxRentPayment, IResolver.PaymentToken(paymentTokenIx));
+        uint256 nftPrice = 1 *
+            unpackPrice(_lendingRenting.lending.nftPrice, scale);
+        uint256 rentPrice = unpackPrice(
+            _lendingRenting.lending.dailyRentPrice,
+            scale
+        );
+        uint256 maxRentPayment = rentPrice *
+            _lendingRenting.renting.rentDuration;
+        uint256 takenFee = takeFee(
+            maxRentPayment,
+            IResolver.PaymentToken(paymentTokenIx)
+        );
         uint256 finalAmt = maxRentPayment + nftPrice;
 
         require(maxRentPayment > 0, "ReNFT::collateral plus rent is zero");
