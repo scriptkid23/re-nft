@@ -13,12 +13,17 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
     using SafeERC20 for ERC20;
     IResolver private resolver;
     address payable private beneficiary;
-    uint256 public rentFee = 0;
+    uint256 public rentFee;
     uint256 private lendingId = 1;
     uint256 private constant SECONDS_IN_DAY = 86400;
 
     mapping(bytes32 => LendingRenting) private lendingRenting;
-
+    
+    constructor(address payable _beneficiary, uint256 _rentFee, address _resolver ){
+        resolver = IResolver(_resolver);
+        beneficiary = _beneficiary;
+        rentFee = _rentFee;
+    }
     // TODO: create function lending
     function lend(
         address[] memory _nfts,
@@ -177,7 +182,9 @@ contract ReNFT is IReNft, ERC721Holder, Ownable, Pausable {
         address[] memory _nfts,
         uint256[] memory _tokenIds,
         uint256[] memory _lendingIds
-    ) external override whenNotPaused {}
+    ) external override whenNotPaused {
+        _handleStopLending(_nfts, _tokenIds, _lendingIds);
+    }
 
     function _handleStopLending(
         address[] memory _nfts,
