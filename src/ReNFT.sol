@@ -121,8 +121,8 @@ contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
             ];
             ensureIsNotNull(item.lending);
             ensureIsNull(item.renting);
+            console.log(_nfts[i], _tokenIds[i], _lendingIds[i]);
             ensureIsRentable(item.lending, _rentDurations[i], msg.sender);
-
             uint8 paymentTokenIx = uint8(item.lending.paymentToken);
             ensureTokenNotSentinel(paymentTokenIx);
             address paymentToken = resolver.getPaymentToken(paymentTokenIx);
@@ -162,7 +162,7 @@ contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
         address[] memory _nfts,
         uint256[] memory _tokenIds,
         uint256[] memory _lendingIds
-    ) external override nonReentrant whenNotPaused {
+    ) external override whenNotPaused {
         _handleReturn(_nfts, _tokenIds, _lendingIds);
     }
 
@@ -177,6 +177,8 @@ contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
                     abi.encodePacked(_nfts[i], _tokenIds[i], _lendingIds[i])
                 )
             ];
+            console.log(_nfts[i], _tokenIds[i], _lendingIds[i]);
+            console.log("[returnIt] maxRentDuration: %s",item.lending.maxRentDuration);
             ensureIsNotNull(item.lending);
             ensureIsReturnable(item.renting, msg.sender, block.timestamp);
             uint256 secondsSinceRentStart = block.timestamp -

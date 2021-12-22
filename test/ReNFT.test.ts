@@ -31,7 +31,9 @@ describe("ReNFT Contract", function () {
     e721Contract: E721,
     usdcContract: USDC,
     reNFTContract: ReNFT,
-    resolverContract: Resolver;
+    resolverContract: Resolver,
+    txn: ContractTransaction,
+    receipt:ContractReceipt;
   before(async function () {
     this.signers = await ethers.getSigners();
     this.owner = this.signers[0];
@@ -105,7 +107,7 @@ describe("ReNFT Contract", function () {
         await e721Contract.connect(this.alice).getApproved(1)
       );
 
-      reNFTContract
+      txn = await reNFTContract
         .connect(this.alice)
         .lend(
           [e721Contract.address, e721Contract.address],
@@ -115,6 +117,8 @@ describe("ReNFT Contract", function () {
           [NFT_PRICE, packPrice(3)],
           [1, 1]
         );
+      receipt = await txn.wait();
+      console.log(receipt);
       expect(await e721Contract.connect(this.bob).ownerOf(1)).to.eq(
         reNFTContract.address
       );
@@ -123,12 +127,13 @@ describe("ReNFT Contract", function () {
       await bnbContract
         .connect(this.bob)
         .approve(reNFTContract.address, ERC20_SEND_AMT);
-      let txn:ContractTransaction = await reNFTContract
+      txn = await reNFTContract
         .connect(this.bob)
         .rent([e721Contract.address], [1], [1], [MAX_RENT_DURATION]);
-        const receipt:ContractReceipt = await txn.wait();
+        receipt = await txn.wait();
 
-        console.log(receipt)
+        let data = (getEvents(receipt.events ?? [],"Rented")[0]);
+        console.log(data)
 
       expect(
         await bnbContract.allowance(this.bob.address, reNFTContract.address)
@@ -137,8 +142,9 @@ describe("ReNFT Contract", function () {
       // test stop Lending hope revert
       // expect(reNFTContract.connect(this.alice).stopLending([e721Contract.address],[1],[1])).to.be.reverted;
       
-      // let txn = await reNFTContract.connect(this.bob).returnIt([reNFTContract.address],[1],[1]);
-      // const receipt = await txn.wait();
+      txn = await reNFTContract.connect(this.bob).returnIt([e721Contract.address],[1],[1]);
+      receipt = await txn.wait();
+      console.log(receipt.events[]);
       // const e = getEvents(receipt.events ?? [], "Returned");
       // console.log(e)
 
