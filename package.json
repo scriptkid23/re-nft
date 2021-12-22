@@ -5,12 +5,13 @@
     "test": "yarn cache clean && yarn compile && npx hardhat test"
   },
   "devDependencies": {
+    "chai": "^4.3.4",
     "ethers": "^5.5.2",
+    "hardhat": "^2.8.0",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "solidity-coverage": "^0.7.17",
-    "hardhat": "^2.8.0",
-    "chai": "^4.3.4"
+    "@openzeppelin/test-helpers": "^0.5.15"
   },
   "resolutions": {
     "abstract-leveldown": "6.2.1",

@@ -1,6 +1,6 @@
 import { E721 } from "./../frontend/src/hardhat/typechain/E721";
 import { Resolver } from "./../frontend/src/hardhat/typechain/Resolver";
-import { BigNumber } from "ethers";
+import { BigNumber, ContractReceipt, ContractTransaction } from "ethers";
 import { expect } from "./chai-setup";
 import { ethers } from "hardhat";
 import { ReNFT } from "../frontend/src/hardhat/typechain/ReNFT";
@@ -120,15 +120,28 @@ describe("ReNFT Contract", function () {
       );
 
       // start renting by bob
-      bnbContract
+      await bnbContract
         .connect(this.bob)
         .approve(reNFTContract.address, ERC20_SEND_AMT);
-      reNFTContract
+      let txn:ContractTransaction = await reNFTContract
         .connect(this.bob)
         .rent([e721Contract.address], [1], [1], [MAX_RENT_DURATION]);
+        const receipt:ContractReceipt = await txn.wait();
+
+        console.log(receipt)
+
       expect(
         await bnbContract.allowance(this.bob.address, reNFTContract.address)
       ).to.eq(ethers.utils.parseEther("6"));
+     
+      // test stop Lending hope revert
+      // expect(reNFTContract.connect(this.alice).stopLending([e721Contract.address],[1],[1])).to.be.reverted;
+      
+      // let txn = await reNFTContract.connect(this.bob).returnIt([reNFTContract.address],[1],[1]);
+      // const receipt = await txn.wait();
+      // const e = getEvents(receipt.events ?? [], "Returned");
+      // console.log(e)
+
     });
   });
 });
