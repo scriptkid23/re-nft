@@ -8,7 +8,10 @@ contract BNB is ERC20 {
     constructor(uint256 initialSupply) ERC20("Binance", "BNB") {
         _mint(msg.sender, initialSupply * 10 ** decimals());
     }
-    function awardToken(uint256 amount) public {
-        _mint(msg.sender, amount * 10 ** decimals());
+    function decimals() public view virtual override returns (uint8) {
+        return 18;
+    }
+    function faucet() public {
+        _mint(msg.sender, 1000 * 10 ** decimals());
     }
 }

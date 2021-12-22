@@ -3,14 +3,14 @@ process.env.TS_NODE_FILES = true;
 module.exports = {
   "allow-uncaught": true,
   diff: true,
-  extension: ["js"],
+  extension: ["ts"],
   recursive: true,
   reporter: "spec",
-  require: ["hardhat/register"], // ['ts-node/register/transpile-only'], (for yarn link <plugin>)
+  require: ["ts-node/register", "hardhat/register"], // ['ts-node/register/transpile-only'], (for yarn link <plugin>)
   slow: 300,
-  spec: "test/**/*.test.js",
+  spec: "test/**/*.test.ts",
   timeout: 20000,
   ui: "bdd",
   watch: false,
-  "watch-files": ["contracts/**/*.sol", "test/**/*.js"],
+  "watch-files": ["src/**/*.sol", "test/**/*.ts"],
 };

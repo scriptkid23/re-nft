@@ -1,31 +1,21 @@
 module.exports = {
   root: true,
-  parser: "@babel/eslint-parser",
+  parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 2020, // Allows for the parsing of modern ECMAScript features
     sourceType: "module", // Allows for the use of imports
   },
   env: {
-    browser: false,
-    es2021: true,
-    mocha: true,
-    node: true,
     commonjs: true,
   },
-  plugins: ["prettier", "import"],
+  plugins: ["@typescript-eslint"],
   extends: [
     "eslint:recommended",
-    "prettier"
-  ],
-  overrides: [
-    {
-      files: ["hardhat.config.js"],
-      globals: { task: true },
-    },
+    "plugin:@typescript-eslint/recommended",
+    "prettier",
+    "prettier/@typescript-eslint",
   ],
   rules: {
-    "compiler-version": ["error", "^0.8.0"],
-    "func-visibility": ["warn", { "ignoreConstructors": true }],
-    "not-rely-on-time": ["off"]
+    "@typescript-eslint/ban-ts-comment": "off",
   },
 };
