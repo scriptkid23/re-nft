@@ -162,7 +162,7 @@ contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
         address[] memory _nfts,
         uint256[] memory _tokenIds,
         uint256[] memory _lendingIds
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         _handleReturn(_nfts, _tokenIds, _lendingIds);
     }
 

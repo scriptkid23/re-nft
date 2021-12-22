@@ -144,10 +144,13 @@ describe("ReNFT Contract", function () {
       
       txn = await reNFTContract.connect(this.bob).returnIt([e721Contract.address],[1],[1]);
       receipt = await txn.wait();
-      console.log(receipt.events[]);
-      // const e = getEvents(receipt.events ?? [], "Returned");
-      // console.log(e)
-
+    
+      const e = getEvents(receipt.events ?? [], "Returned");
+      console.log(e)
+      expect(await reNFTContract.connect(this.bob).returnIt([e721Contract.address],[1],[1])).to.be.revertedWith(
+        "not renter"
+      );
+      
     });
   });
 });
