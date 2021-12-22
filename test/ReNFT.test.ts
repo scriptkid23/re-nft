@@ -142,9 +142,10 @@ describe("ReNFT Contract", function () {
       txn = await reNFTContract.connect(this.bob).returnIt([e721Contract.address],[1],[1]);
       receipt = await txn.wait();
     
-      const e = getEvents(receipt.events ?? [], "Returned");
-      await expect(reNFTContract.connect(this.bob).returnIt([e721Contract.address],[1],[1])).to.be.revertedWith(
-        "not renter"
+
+      await reNFTContract.connect(this.alice).stopLending([e721Contract.address],[1],[1]);
+      await expect(reNFTContract.connect(this.bob).rent([e721Contract.address],[1],[1],[MAX_RENT_DURATION])).to.be.revertedWith(
+        "Renter failed because owner had stopped lending"
       );
       
     });
