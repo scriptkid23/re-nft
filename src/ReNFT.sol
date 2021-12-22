@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 import "./interface/IReNFT.sol";
 import "./interface/IResolver.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -9,8 +10,8 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./base/Schemas.sol";
-
-contract ReNFT is ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
+import "hardhat/console.sol";
+contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for ERC20;
     IResolver private resolver;
     address payable private beneficiary;
@@ -494,7 +495,7 @@ contract ReNFT is ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
         address _to
     ) private {
         if (is721(_nft)) {
-            IERC721(_nft).safeTransferFrom(_from, _to, _tokenId);
+            IERC721(_nft).transferFrom(_from, _to, _tokenId);
         } else {
             revert("Unsupported token type");
         }

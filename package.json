@@ -1,9 +1,8 @@
 {
   "name": "hardhat-project",
   "scripts": {
-    "clean": "RD /S /Q artifacts cache frontend",
     "compile": "npx hardhat compile",
-    "test": "yarn compile && npx hardhat test"
+    "test": "yarn cache clean && yarn compile && npx hardhat test"
   },
   "devDependencies": {
     "ethers": "^5.5.2",
