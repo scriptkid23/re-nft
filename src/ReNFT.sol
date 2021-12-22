@@ -143,6 +143,16 @@ contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
                     address(this),
                     rentPrice + nftPrice
                 );
+                item.renting.renter = payable(msg.sender);
+                item.renting.rentDuration = _rentDurations[i];
+                item.renting.rentedAt = uint32(block.timestamp);
+
+                emit Rented(
+                    _lendingIds[i],
+                    msg.sender,
+                    _rentDurations[i],
+                    item.renting.rentedAt
+                );
             }
         }
     }
@@ -386,7 +396,7 @@ contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
         uint256 _secondsSinceRentStart
     ) private {
         uint8 paymentTokenIx = uint8(_lendingRenting.lending.paymentToken);
-        // ensureTokenNotSentinel(paymentTokenIx);
+        ensureTokenNotSentinel(paymentTokenIx);
         address paymentToken = resolver.getPaymentToken(paymentTokenIx);
         uint256 decimals = ERC20(paymentToken).decimals();
 

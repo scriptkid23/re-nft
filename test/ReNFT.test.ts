@@ -1,12 +1,12 @@
-import { E721 } from './../frontend/src/hardhat/typechain/E721';
-import { Resolver } from './../frontend/src/hardhat/typechain/Resolver';
+import { E721 } from "./../frontend/src/hardhat/typechain/E721";
+import { Resolver } from "./../frontend/src/hardhat/typechain/Resolver";
 import { BigNumber } from "ethers";
 import { expect } from "./chai-setup";
 import { ethers } from "hardhat";
 import { ReNFT } from "../frontend/src/hardhat/typechain/ReNFT";
-import {USDC} from '../frontend/src/hardhat/typechain/USDC'
-import {BNB} from '../frontend/src/hardhat/typechain/BNB'
-import {IERC721} from '../frontend/src/hardhat/typechain/IERC721'
+import { USDC } from "../frontend/src/hardhat/typechain/USDC";
+import { BNB } from "../frontend/src/hardhat/typechain/BNB";
+import { IERC721 } from "../frontend/src/hardhat/typechain/IERC721";
 import {
   packPrice,
   takeFee,
@@ -27,7 +27,11 @@ const ERC20_SEND_AMT = ethers.utils.parseEther("10");
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 describe("ReNFT Contract", function () {
-  var bnbContract:BNB, e721Contract:E721, usdcContract:USDC, reNFTContract:ReNFT, resolverContract:Resolver   ;
+  var bnbContract: BNB,
+    e721Contract: E721,
+    usdcContract: USDC,
+    reNFTContract: ReNFT,
+    resolverContract: Resolver;
   before(async function () {
     this.signers = await ethers.getSigners();
     this.owner = this.signers[0];
@@ -46,54 +50,85 @@ describe("ReNFT Contract", function () {
     this.Resolver = await ethers.getContractFactory("Resolver");
   });
   beforeEach(async function () {});
-  context("Start", function(){
-      it("should it work", async function(){
-        bnbContract = await this.BNB.deploy(100000);
-        e721Contract = await this.E721.deploy();
-        usdcContract = await this.USDC.deploy(this.owner.address);
-        resolverContract = await this.Resolver.deploy();
-        reNFTContract = await this.ReNFT.deploy(this.beneficiary.address, 0, resolverContract.address);
+  context("Start", function () {
+    it("should it work", async function () {
+      bnbContract = await this.BNB.deploy(100000);
+      e721Contract = await this.E721.deploy();
+      usdcContract = await this.USDC.deploy(this.owner.address);
+      resolverContract = await this.Resolver.deploy();
+      reNFTContract = await this.ReNFT.deploy(
+        this.beneficiary.address,
+        0,
+        resolverContract.address
+      );
 
-        console.log("bnbContract address: ",bnbContract.address);
-        console.log("e721Contract address: ",e721Contract.address);
-        console.log("usdcContract address: ",usdcContract.address);
-        console.log("resolverContract address:", resolverContract.address);
-        console.log("reNFTContract address: ",reNFTContract.address);
-        
-        // alice have 2 NFT, 0 BNB, 0 USDC
-        e721Contract.connect(this.alice).award();
-        e721Contract.connect(this.alice).award();
-      
-        
-        e721Contract.connect(this.alice).setApprovalForAll(reNFTContract.address, true);
-        expect(await e721Contract.ownerOf(1)).to.eq(this.alice.address);
-        expect(await e721Contract.ownerOf(2)).to.eq(this.alice.address);
+      console.log("bnbContract address: ", bnbContract.address);
+      console.log("e721Contract address: ", e721Contract.address);
+      console.log("usdcContract address: ", usdcContract.address);
+      console.log("resolverContract address:", resolverContract.address);
+      console.log("reNFTContract address: ", reNFTContract.address);
 
+      // alice have 2 NFT, 0 BNB, 0 USDC
+      e721Contract.connect(this.alice).award();
+      e721Contract.connect(this.alice).award();
 
-        // bob have 0 NFT, 1000 BNB, 1000 USDC
-        usdcContract.connect(this.bob).faucet();
-        bnbContract.connect(this.bob).faucet();
+      e721Contract
+        .connect(this.alice)
+        .setApprovalForAll(reNFTContract.address, true);
+      expect(await e721Contract.ownerOf(1)).to.eq(this.alice.address);
+      expect(await e721Contract.ownerOf(2)).to.eq(this.alice.address);
 
-        resolverContract.connect(this.owner).setPaymentToken(1,bnbContract.address);
-        resolverContract.connect(this.owner).setPaymentToken(2,usdcContract.address);
+      // bob have 0 NFT, 1000 BNB, 1000 USDC
+      usdcContract.connect(this.bob).faucet();
+      bnbContract.connect(this.bob).faucet();
 
-        
-        expect(await resolverContract.getPaymentToken(1)).to.eq(bnbContract.address);
-        expect(await resolverContract.getPaymentToken(2)).to.eq(usdcContract.address);
-      
-         // start lending by alice
-        e721Contract.connect(this.alice).approve(reNFTContract.address,1);
-        
-        console.log("Owner of token #1: ",await e721Contract.ownerOf(1));
-        console.log("Approved of token #1: ",await e721Contract.connect(this.alice).getApproved(1));
+      resolverContract
+        .connect(this.owner)
+        .setPaymentToken(1, bnbContract.address);
+      resolverContract
+        .connect(this.owner)
+        .setPaymentToken(2, usdcContract.address);
 
-        reNFTContract.connect(this.alice).lend([e721Contract.address],[1],[MAX_RENT_DURATION],[DAILY_RENT_PRICE],[NFT_PRICE],[1]);
-        expect(await e721Contract.connect(this.bob).ownerOf(1)).to.eq(reNFTContract.address);
+      expect(await resolverContract.getPaymentToken(1)).to.eq(
+        bnbContract.address
+      );
+      expect(await resolverContract.getPaymentToken(2)).to.eq(
+        usdcContract.address
+      );
 
-        // start renting by bob
-        bnbContract.connect(this.bob).approve(reNFTContract.address, ERC20_SEND_AMT);
-        reNFTContract.connect(this.bob).rent([e721Contract.address],[1],[1],[MAX_RENT_DURATION]);
-        expect(await bnbContract.allowance(this.bob.address, reNFTContract.address) ).to.eq(ethers.utils.parseEther("6"));
-      })
-  })
+      // start lending by alice
+      e721Contract.connect(this.alice).approve(reNFTContract.address, 1);
+
+      console.log("Owner of token #1: ", await e721Contract.ownerOf(1));
+      console.log(
+        "Approved of token #1: ",
+        await e721Contract.connect(this.alice).getApproved(1)
+      );
+
+      reNFTContract
+        .connect(this.alice)
+        .lend(
+          [e721Contract.address, e721Contract.address],
+          [1, 2],
+          [MAX_RENT_DURATION, MAX_RENT_DURATION],
+          [DAILY_RENT_PRICE, DAILY_RENT_PRICE],
+          [NFT_PRICE, packPrice(3)],
+          [1, 1]
+        );
+      expect(await e721Contract.connect(this.bob).ownerOf(1)).to.eq(
+        reNFTContract.address
+      );
+
+      // start renting by bob
+      bnbContract
+        .connect(this.bob)
+        .approve(reNFTContract.address, ERC20_SEND_AMT);
+      reNFTContract
+        .connect(this.bob)
+        .rent([e721Contract.address], [1], [1], [MAX_RENT_DURATION]);
+      expect(
+        await bnbContract.allowance(this.bob.address, reNFTContract.address)
+      ).to.eq(ethers.utils.parseEther("6"));
+    });
+  });
 });
