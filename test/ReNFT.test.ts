@@ -6,7 +6,6 @@ import { ethers } from "hardhat";
 import { ReNFT } from "../frontend/src/hardhat/typechain/ReNFT";
 import { USDC } from "../frontend/src/hardhat/typechain/USDC";
 import { BNB } from "../frontend/src/hardhat/typechain/BNB";
-import { IERC721 } from "../frontend/src/hardhat/typechain/IERC721";
 import {
   packPrice,
   takeFee,
@@ -118,7 +117,6 @@ describe("ReNFT Contract", function () {
           [1, 1]
         );
       receipt = await txn.wait();
-      console.log(receipt);
       expect(await e721Contract.connect(this.bob).ownerOf(1)).to.eq(
         reNFTContract.address
       );
@@ -133,7 +131,6 @@ describe("ReNFT Contract", function () {
         receipt = await txn.wait();
 
         let data = (getEvents(receipt.events ?? [],"Rented")[0]);
-        console.log(data)
 
       expect(
         await bnbContract.allowance(this.bob.address, reNFTContract.address)
@@ -145,10 +142,10 @@ describe("ReNFT Contract", function () {
       txn = await reNFTContract.connect(this.bob).returnIt([e721Contract.address],[1],[1]);
       receipt = await txn.wait();
     
-      const e = getEvents(receipt.events ?? [], "Returned");
-      console.log(e)
-      expect(await reNFTContract.connect(this.bob).returnIt([e721Contract.address],[1],[1])).to.be.revertedWith(
-        "not renter"
+
+      await reNFTContract.connect(this.alice).stopLending([e721Contract.address],[1],[1]);
+      await expect(reNFTContract.connect(this.bob).rent([e721Contract.address],[1],[1],[MAX_RENT_DURATION])).to.be.revertedWith(
+        "Renter failed because owner had stopped lending"
       );
       
     });
