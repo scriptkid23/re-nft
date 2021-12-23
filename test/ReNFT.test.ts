@@ -44,7 +44,6 @@ describe("ReNFT Contract", function () {
     this.signer = this.signers[5];
     this.fundWallet = this.signers[6];
     this.beneficiary = this.signers[7];
-    this.nft = ZERO_ADDRESS;
     this.BNB = await ethers.getContractFactory("BNB");
     this.E721 = await ethers.getContractFactory("E721");
     this.USDC = await ethers.getContractFactory("USDC");
@@ -52,6 +51,7 @@ describe("ReNFT Contract", function () {
     this.Resolver = await ethers.getContractFactory("Resolver");
   });
   beforeEach(async function () {});
+  
   context("Start", function () {
     it("should it work", async function () {
       bnbContract = await this.BNB.deploy(100000);
