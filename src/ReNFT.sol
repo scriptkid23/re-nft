@@ -178,6 +178,8 @@ contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
             ];
             ensureIsNotNull(item.lending);
             ensureIsReturnable(item.renting, msg.sender, block.timestamp);
+            //TODO: thêm điều kiện trừ không được phép có giá trị âm 
+            // khoảng thời gian từ lúc thuê đến lúc kết thúc thuê
             uint256 secondsSinceRentStart = block.timestamp -
                 item.renting.rentedAt;
             _distributePayments(item, secondsSinceRentStart);
@@ -409,7 +411,7 @@ contract ReNFT is  ERC721Holder, IReNft, Ownable, Pausable, ReentrancyGuard {
         // số tiền cần trả khi đúng hạn
         uint256 totalRenterPmtWoCollateral = rentPrice *
             _lendingRenting.renting.rentDuration;
-        // số tiền cần trả lại lender ~ số ngày đã sử dụng * rentPrice
+        // số tiền cần trả lại lender đã sử dụng trong x giây =  số ngày đã sử dụng(tính theo giây) * rentPrice / SECONDS_IN_DAY
         uint256 sendLenderAmt = (_secondsSinceRentStart * rentPrice) /
             SECONDS_IN_DAY;
         require(

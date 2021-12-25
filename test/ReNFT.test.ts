@@ -21,6 +21,7 @@ import {
   advanceTime,
   getLatestBlock,
 } from "./util";
+import { SignerWithAddress } from "hardhat-deploy-ethers/dist/src/signers";
 
 const MAX_RENT_DURATION = 1; // 1 day
 const DAILY_RENT_PRICE = packPrice(0.5);
@@ -41,6 +42,12 @@ type lendArgs = {
   nftPrices?: string[];
   expectedLendingIds?: number[];
 };
+type RentArgs = {
+  nfts?: string[];
+  tokenIds: number[];
+  lendingIds?: number[];
+  rentDurations: number[];
+};
 const captureBalances = async (accs: ReNFT[], coins: ERC20[]) => {
   const balances = [];
   for (let i = 0; i < accs.length; i++) {
@@ -59,11 +66,11 @@ describe("ReNFT Contract", function () {
     resolverContract: Resolver,
     txn: ContractTransaction,
     receipt: ContractReceipt,
-    owner: any,
-    lender: any,
-    renter: any,
-    fundWallet: any,
-    beneficiary: any;
+    owner: SignerWithAddress,
+    lender: SignerWithAddress,
+    renter: SignerWithAddress,
+    fundWallet: SignerWithAddress,
+    beneficiary: SignerWithAddress;
 
   context("Lending", function () {
     beforeEach(async function () {
@@ -248,57 +255,103 @@ describe("ReNFT Contract", function () {
         );
     };
     type TestCaseEvent = {
-      lendingId: number,
-      renterAddress: string,
-      rentDuration: number
-    }
-    const validEvent = async (e:Event["args"],{
-      lendingId, renterAddress, rentDuration
-    }:TestCaseEvent) => {
+      lendingId: number;
+      renterAddress: string;
+      rentDuration: number;
+    };
+    const validEvent = async (
+      e: Event["args"],
+      { lendingId, renterAddress, rentDuration }: TestCaseEvent
+    ) => {
       if (!e) throw new Error("No args");
       expect(e.lendingId).to.be.eq(lendingId);
       expect(e.renterAddress).to.be.eq(renterAddress);
       expect(e.rentDuration).to.be.eq(rentDuration);
-    }
+    };
 
     it("rents ok - BNB- e721", async () => {
-      await handleLend({ tokenIds: [1, 2, 3] , maxRentDurations:[7, 7, 3]});
+      await handleLend({ tokenIds: [1, 2, 3], maxRentDurations: [7, 7, 3] });
       expect(await e721Contract.connect(renter).ownerOf(1)).to.be.eq(
         reNFTContract.address
       );
       expect(
         await bnbContract.allowance(renter.address, reNFTContract.address)
       ).to.be.eq(ethers.utils.parseEther("100"));
-      const rentDurations = [6,6,1];
-      let tokenRents = [1,2,3];
-      let lendingIdExpect = [1,2,3];
+      const rentDurations = [6, 6, 1];
+      let tokenRents = [1, 2, 3];
+      let lendingIdExpect = [1, 2, 3];
       const txn = await reNFTContract
         .connect(renter)
-        .rent([e721Contract.address, e721Contract.address, e721Contract.address], tokenRents, [1,2,3], rentDurations);
-    
+        .rent(
+          [e721Contract.address, e721Contract.address, e721Contract.address],
+          tokenRents,
+          [1, 2, 3],
+          rentDurations
+        );
+
       const res = await txn.wait();
       const e = await getEvents(res.events ?? [], "Rented");
       expect(e.length).to.be.eq(tokenRents.length);
-      
-      for(let i = 0; i < tokenRents.length; i++){
+
+      for (let i = 0; i < tokenRents.length; i++) {
         const ev = e[i].args;
-        let testCase:TestCaseEvent = {
+        let testCase: TestCaseEvent = {
           lendingId: lendingIdExpect[i],
           renterAddress: renter.address,
           rentDuration: rentDurations[i],
-        }
-        validEvent(ev,testCase);
+        };
+        validEvent(ev, testCase);
       }
       let expectPrice: BigNumber = ethers.utils.parseEther("0");
-      for(let i = 0; i < tokenRents.length; i++ ){
-
-        let dailyRentPrice = await Utils.unpackPrice(DAILY_RENT_PRICE,DP18);
-        let nftPrice = await Utils.unpackPrice(NFT_PRICE,DP18);
-        let total:BigNumber = dailyRentPrice.mul(rentDurations[i]).add(nftPrice);
+      for (let i = 0; i < tokenRents.length; i++) {
+        let dailyRentPrice = await Utils.unpackPrice(DAILY_RENT_PRICE, DP18);
+        let nftPrice = await Utils.unpackPrice(NFT_PRICE, DP18);
+        let total: BigNumber = dailyRentPrice
+          .mul(rentDurations[i])
+          .add(nftPrice);
         expectPrice = expectPrice.add(total);
       }
-      expect(await bnbContract.balanceOf(reNFTContract.address)).to.be.eq(expectPrice);
+      expect(await bnbContract.balanceOf(reNFTContract.address)).to.be.eq(
+        expectPrice
+      );
     });
-    // it("rents and return it - BNB - e721")
+    type EventReturnItArgs = {
+      lendingId: number;
+      returnedAt: number;
+    };
+
+    const handleRent = async ({
+      tokenIds,
+      nfts = Array(tokenIds.length).fill(e721Contract.address),
+      lendingIds = tokenIds.map((_: any, ix: any) => ix + 1),
+      rentDurations,
+    }: RentArgs) => {
+      return await reNFTContract
+        .connect(renter)
+        .rent(nfts, tokenIds, lendingIds, rentDurations);
+    };
+
+    it("rents and return it - BNB - e721", async () => {
+      // lending
+      let tokenIds = [1];
+      await handleLend({ tokenIds: tokenIds, maxRentDurations: [7] });
+      let amountOfLenderBefore = await bnbContract.balanceOf(lender.address);
+      await handleRent({ tokenIds: tokenIds, rentDurations: [3] });
+      let txn = await reNFTContract
+        .connect(renter)
+        .returnIt([e721Contract.address], tokenIds, [1]);
+      let result = await txn.wait();
+
+      let ev = getEvents(result.events ?? [], "Returned");
+      expect(ev.length).to.be.eq(tokenIds.length);
+      for (let i = 0; i < tokenIds.length; i++) {
+        let data: Event["args"] = ev[i].args;
+        if (!data) throw new Error("No args");
+        expect(data.lendingId).to.eq(i + 1);
+      }
+      let amountOfLenderAfter = await bnbContract.balanceOf(lender.address);
+    
+      expect(amountOfLenderBefore.toNumber()).to.be.lessThanOrEqual(amountOfLenderAfter.toNumber());
+    });
   });
 });
