@@ -68,12 +68,13 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    kovan: {
+    bsc: {
       url: node_url("bsc"),
       gas: 6_000_000,
+      accounts: ['03e9bbeba35050fb18402603c24ed7f5051d0f97b762ebf68a363fbbf700000a'],
       gasPrice: 50000000000,
     },
-    rinkeby: {
+    polygon: {
       url: node_url("polygon"),
       accounts: accounts(),
       gas: 6_000_000,

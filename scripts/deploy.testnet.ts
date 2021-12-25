@@ -1,3 +1,4 @@
+
 // We require the Hardhat Runtime Environment explicitly here. This is optional
 // but useful for running the script in a standalone fashion through `node <script>`.
 //
@@ -12,14 +13,15 @@ async function main() {
   // If this script is run directly using `node` you may want to call compile
   // manually to make sure everything is compiled
   // await hre.run('compile');
-
+  const beneficiary  = '0x448b00525CCd4552a5c9eFbBaAB9304e96500c60';
   // We get the contract to deploy
-  const Greeter = await hre.ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+  const Resolver = await hre.ethers.getContractFactory("Resolver");
+  const resolver = await Resolver.deploy();
+  console.log("Resolver Deployed to: ",resolver.address);
+  const ReNFT = await hre.ethers.getContractFactory("ReNFT");
+  const reNFT = await ReNFT.deploy(beneficiary,0,resolver.address);
+  console.log("ReNFT deployed to:", reNFT.address);
 
-  await greeter.deployed();
-
-  console.log("Greeter deployed to:", greeter.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
