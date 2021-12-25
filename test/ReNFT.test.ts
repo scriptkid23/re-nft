@@ -102,6 +102,7 @@ describe("ReNFT Contract", function () {
       await resolverContract
         .connect(owner)
         .setPaymentToken(2, usdcContract.address);
+      await expect(resolverContract.connect(lender).setPaymentToken(3, renter.address)).to.be.reverted;
 
       for (let i = 0; i < 10; i++) {
         await e721Contract.connect(lender).award();
@@ -353,5 +354,13 @@ describe("ReNFT Contract", function () {
     
       expect(amountOfLenderBefore.toNumber()).to.be.lessThanOrEqual(amountOfLenderAfter.toNumber());
     });
+    it("Stopping lending", async() => {
+      let tokenIds = [1,2,3];
+      let maxRentDurations = [7,3,3];
+      await handleLend({tokenIds: tokenIds, maxRentDurations: maxRentDurations});
+      await reNFTContract.connect(lender).stopLending([e721Contract.address],[1,2],[1,2]);
+      await expect(handleRent({tokenIds: [1,2],nfts:[e721Contract.address, e721Contract.address],lendingIds:[1,2], rentDurations:[1,2]})).to.be.reverted;
+      expect(await handleRent({tokenIds: [3],nfts:[e721Contract.address],lendingIds:[3], rentDurations:[1]}));
+    })
   });
 });
