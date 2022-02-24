@@ -1,7 +1,7 @@
 {
   "name": "hardhat-project",
   "scripts": {
-    "compile": "npx hardhat compile",
+    "compile": "yarn cache clean && npx hardhat compile",
     "test": "yarn cache clean && yarn compile && npx hardhat test"
   },
   "devDependencies": {
