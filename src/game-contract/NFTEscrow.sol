@@ -75,7 +75,7 @@ contract NFTWEscrow is Initializable, OwnableUpgradeable, ERC165Upgradeable, INF
             require(EPIC_ERC20_ADDR != address(0), "E3");// E3: Rewards token not set
             require(EPIC_ERC20_ADDR == currency, "E3"); 
             _handleIncomingFund(amount, currency);
-            TokenInfo[_msgSender()] = amount;
+            TokenInfo[_msgSender()] += amount;
             emit TokenDeposited(amount, _msgSender());
 
         }
@@ -107,7 +107,7 @@ contract NFTWEscrow is Initializable, OwnableUpgradeable, ERC165Upgradeable, INF
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
-            if (EPIC_NFT_ADDR._exists(tokenId)) {
+            if (EPIC_NFT_ADDR.checkExistsToken(tokenId)) {
                 require(NftInfo[tokenId].owner == _msgSender(), "E8"); // E8: Not your NFT
                 require(NftInfo[tokenId].claimable, "E9"); // EB: not claimable
                 EPIC_NFT_ADDR.safeTransferFrom(address(this), _msgSender(), tokenId);
