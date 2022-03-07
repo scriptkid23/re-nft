@@ -104,6 +104,7 @@ contract MarketplaceAuction is Initializable, OwnableUpgradeable, ERC721HolderUp
     }
     
     function createBid(uint256 auctionId, uint256 price) external payable nonReentrant auctionExists(auctionId) {
+        require(msg.sender == tx.origin, "Invalid bidder");
         require(marketPlaceItems[auctionId].endTime > block.timestamp, "Auction expired");
         require(marketPlaceItems[auctionId].marketItemType == MarketItemsType.AUCTION, "Can not bid on listed Item");
         bool firstBidder = true;

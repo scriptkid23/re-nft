@@ -159,8 +159,12 @@ contract Marketplace is Initializable, OwnableUpgradeable, ERC721HolderUpgradeab
         require(currency == itemOffer.currency , "Invalid currency");
         require(price >= floorPrices[tokenAddress][currency] && price == itemOffer.price , "Invalid price");
         require(buyer != tokenOwner);
-        require(seller == tokenOwner || seller == listedItem.tokenOwner, "Not token owner");
-
+        if (marketItemId > 0) {
+            require(seller == listedItem.tokenOwner, "Not market item owner");
+        } else {
+            require(seller == tokenOwner, "Not token owner");
+        }
+        
         uint256 fee = price * feePerthousand / 1000;
         _handleOutgoingFund(vault, fee, currency);
 
