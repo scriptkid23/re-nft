@@ -62,6 +62,7 @@ contract EpicWarBox is Initializable, OwnableUpgradeable, ERC721EnumerableUpgrad
     address public fundWallet;
     address public VRFContract;
     bool public allowTransfer;
+    uint256 public eventStartId;
     
     event EventCreated(uint256 totalSupply, uint256 price, address currency, uint256 startTime, uint256 endTime, uint256 maxBuy, uint256 startID, uint256 openBoxTime, address nftContract);
     event BoxCreated(uint256 indexed id, address boxOwner, uint256 eventId, string eventType, string boxUri, string boxName, address boxContractAddress, uint256 price, address currency);
@@ -83,6 +84,7 @@ contract EpicWarBox is Initializable, OwnableUpgradeable, ERC721EnumerableUpgrad
         fundWallet = _fundWallet;
         VRFContract = _VRFContract;
         allowTransfer = false;
+        eventStartId = 0;
     }
 
     function createEvent(
@@ -94,7 +96,6 @@ contract EpicWarBox is Initializable, OwnableUpgradeable, ERC721EnumerableUpgrad
         uint256 _startTime,
         uint256 _endTime,
         uint256 _maxBuy,
-        uint256 _startID,
         uint256 _openBoxTime,
         address _nftContract
     ) external onlyOwner {
@@ -102,13 +103,14 @@ contract EpicWarBox is Initializable, OwnableUpgradeable, ERC721EnumerableUpgrad
         require(_startTime < _endTime, "Invalid time");
         require(_maxBuy > 0, "Need set max buy");
 
-        eventByID[_eventID] = EventInfo(_totalSupply, _price, _currency, _startTime, _endTime, _maxBuy, _startID, _openBoxTime, _nftContract, _eventType, 0);
+        eventByID[_eventID] = EventInfo(_totalSupply, _price, _currency, _startTime, _endTime, _maxBuy, eventStartId, _openBoxTime, _nftContract, _eventType, 0);
+        eventStartId += _totalSupply;
         emit EventCreated(
             _totalSupply,
             _price, _currency,
             _startTime, _endTime,
             _maxBuy,
-            _startID,
+            eventStartId,
             _openBoxTime,
             _nftContract
         );
@@ -234,6 +236,11 @@ contract EpicWarBox is Initializable, OwnableUpgradeable, ERC721EnumerableUpgrad
     function setVRFContract(address _VRFContract) public onlyOwner {
         require(_VRFContract != address(0), "Invalid contract");
         VRFContract = _VRFContract;
+    }
+
+    //call when create new event after mint nft from game to update eventStartId
+    function setEventStartId(uint256 _startId) public onlyOwner { 
+        eventStartId = _startId;
     }
 
     // Open box

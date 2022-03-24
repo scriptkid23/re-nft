@@ -83,8 +83,8 @@ contract EpicWarNFT is Initializable, OwnableUpgradeable, ERC721EnumerableUpgrad
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
-
-    function _exists(uint256 tokenId) internal view virtual override returns (bool) {
-        return _exists(tokenId);
+    
+    function checkExistsToken(uint256 tokenId) external view returns (bool) {
+        return super._exists(tokenId);
     }
 }
