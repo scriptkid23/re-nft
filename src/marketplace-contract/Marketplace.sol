@@ -118,7 +118,11 @@ contract Marketplace is Initializable, OwnableUpgradeable, ERC721HolderUpgradeab
     function offer(uint256 marketItemId, uint256 tokenId, address tokenAddress, uint256 offerValue, address currency) external payable nonReentrant{
         require(floorPrices[tokenAddress][currency] > 0 , "Token not allowed");
         require(offerValue >= floorPrices[tokenAddress][currency], "Under floor price");
-        
+         if (marketItemId > 0) {
+            MarketItem storage listedItem = marketPlaceItems[marketItemId];
+            require(listedItem.marketItemType == MarketItemsType.LIST, "Not listed Item");
+            require(listedItem.tokenId == tokenId ,  "Not correct tokenId");
+         }
         address buyer = msg.sender;
         address tokenOwner = IERC721Upgradeable(tokenAddress).ownerOf(tokenId);
         require(buyer != tokenOwner, "Owner cannot make offer");
@@ -160,6 +164,8 @@ contract Marketplace is Initializable, OwnableUpgradeable, ERC721HolderUpgradeab
         require(price >= floorPrices[tokenAddress][currency] && price == itemOffer.price , "Invalid price");
         require(buyer != tokenOwner);
         if (marketItemId > 0) {
+            require(listedItem.marketItemType == MarketItemsType.LIST, "Not listed Item");
+            require(listedItem.tokenId == tokenId ,  "Not correct tokenId");
             require(seller == listedItem.tokenOwner, "Not market item owner");
         } else {
             require(seller == tokenOwner, "Not token owner");
