@@ -1,4 +1,4 @@
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
@@ -36,6 +36,11 @@ contract NFTWEscrow is
     bytes32 public constant WITHDRAW_TOKEN_WITH_SIG_TYPEHASH = keccak256(
         "TokenWithdrawal(uint256 amount,uint256 nonce,uint256 deadline)"
     );
+    uint256 private spacerTime;
+
+    mapping(address => uint256) public NFTWithDrawalTimeStamp;
+    mapping(address => uint256) public TokenWithDrawalTimeStamp;
+
     mapping(address => uint256) public NFTWithDrawalNonces;
     mapping(address => uint256) public TokenWithDrawalNonces;
     mapping(uint256 => NFTInfo) public NftInfo;
@@ -127,6 +132,8 @@ contract NFTWEscrow is
             _signature.deadline == 0 || _signature.deadline >= block.timestamp,
             "E5"
         ); // E5: Signature expired
+        require((NFTWithDrawalTimeStamp[msg.sender] + spacerTime) <= block.timestamp , "withdraw within spacer time");
+        
         bytes32 domainSeparator = _calculateDomainSeparator();
 
         bytes32 digest = keccak256(
@@ -168,6 +175,8 @@ contract NFTWEscrow is
                 EPIC_NFT_ADDR.mintNft(msg.sender, tokenId);
             }
         }
+        NFTWithDrawalTimeStamp[msg.sender] = block.timestamp;
+        
         emit NFTWithdrawed(
             transactionId,
             tokenIds,
@@ -186,6 +195,9 @@ contract NFTWEscrow is
             _signature.deadline == 0 || _signature.deadline >= block.timestamp,
             "E5"
         ); // E5: Signature expired
+        require((TokenWithDrawalTimeStamp[msg.sender] + spacerTime) <= block.timestamp , "withdraw within spacer time");        
+        require(amount > 0, "E10");
+        
         bytes32 domainSeparator = _calculateDomainSeparator();
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -212,6 +224,9 @@ contract NFTWEscrow is
         require(recoveredAddress == signer, "E7"); // E7: signature invalid
 
         _handleOutgoingFund(_msgSender(), amount, EPIC_ERC20_ADDR);
+
+        TokenWithDrawalTimeStamp[msg.sender] = block.timestamp;
+
         emit TokenWithdrawed(
             transactionId,
             amount,
@@ -223,6 +238,10 @@ contract NFTWEscrow is
     // signing key does not require high security and can be put on an API server and rotated periodically, as signatures are issued dynamically
     function setSigner(address _signer) external onlyRole(OWNER_ROLE) {
         signer = _signer;
+    }
+
+    function setSpacer(uint256 spacer) external onlyRole(OWNER_ROLE) {
+        spacerTime = spacer;
     }
 
     function _calculateDomainSeparator() internal view returns (bytes32) {

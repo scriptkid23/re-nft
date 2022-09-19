@@ -1,4 +1,4 @@
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -6,6 +6,9 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+/**
+FOR TEST ONLY
+*/
 contract EpicWarNFTTest is ERC721URIStorage,Initializable, OwnableUpgradeable, AccessControlUpgradeable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
@@ -43,7 +46,7 @@ contract EpicWarNFTTest is ERC721URIStorage,Initializable, OwnableUpgradeable, A
         grantRole(MINTER_ROLE, account);
     }
 
-    function createToken(string memory tokenURI) public returns(uint256) {
+    function createToken(string memory tokenURI) onlyRole(MINTER_ROLE) public returns(uint256) {
         _tokenIds.increment();
         uint256 newItemId = _tokenIds.current();
         _mint(msg.sender, newItemId);

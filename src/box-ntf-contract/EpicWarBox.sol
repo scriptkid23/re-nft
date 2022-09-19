@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -17,7 +17,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "hardhat/console.sol";
 
 interface IEpicWarNumber {
-  function getEventRandomNumber(uint256 eventId) external;
+  function getEventRandomNumber(uint16 eventId) external;
 }
 
 interface IEpicWarNFT {
@@ -32,22 +32,22 @@ contract EpicWarBox is
   ReentrancyGuardUpgradeable
 {
   struct EventInfo {
-    uint256 totalSupply;
+    uint16 totalSupply;
     uint256 boxPrice;
     address currency;
     uint256 startTime;
     uint256 endTime;
-    uint256 maxBuy;
+    uint16 maxBuy;
     uint256 startID;
     uint256 openBoxTime;
     address nftContract;
     string eventType;
-    uint256 boxCount;
+    uint16 boxCount;
   }
 
   struct BoxList {
-    uint256 quantity;
-    uint256 bought;
+    uint16 quantity;
+    uint16 bought;
     string nameBox;
     string uriImage;
   }
@@ -55,26 +55,26 @@ contract EpicWarBox is
   using Counters for Counters.Counter;
   Counters.Counter private _tokenIds;
 
-  mapping(uint256 => EventInfo) public eventByID; //event info by ID
-  mapping(uint256 => mapping(uint256 => BoxList)) public boxesByEvent; //list box in event & index
-  mapping(uint256 => uint256) public boxByEvent; //check box in event
-  mapping(uint256 => mapping(address => uint256)) public userBought; //number of box buy in event
-  mapping(uint256 => uint256) public randomNumber; //random number by event
+  mapping(uint16 => EventInfo) public eventByID; //event info by ID
+  mapping(uint16 => uint16[]) private ranIDByEvent; //random array by event ID
+  mapping(uint16 => mapping(uint16 => BoxList)) public boxesByEvent; //list box in event & index
+  mapping(uint256 => uint16) public boxByEvent; //check box in event
+  mapping(uint16 => mapping(address => uint16)) public userBought; //number of box buy in event
+  mapping(uint16 => uint256) public randomNumber; //random number by event
 
   string public uri;
-  address public signer;
   address public fundWallet;
   address public VRFContract;
   bool public allowTransfer;
   uint256 public eventStartId;
 
   event EventCreated(
-    uint256 totalSupply,
+    uint16 totalSupply,
     uint256 price,
     address currency,
     uint256 startTime,
     uint256 endTime,
-    uint256 maxBuy,
+    uint16 maxBuy,
     uint256 startID,
     uint256 openBoxTime,
     address nftContract
@@ -82,7 +82,7 @@ contract EpicWarBox is
   event BoxCreated(
     uint256 indexed id,
     address boxOwner,
-    uint256 eventId,
+    uint16 eventId,
     string eventType,
     string boxUri,
     string boxName,
@@ -94,14 +94,13 @@ contract EpicWarBox is
     address indexed user,
     uint256 boxId,
     uint256 nftId,
-    uint256 eventId
+    uint16 eventId
   );
 
   function __EpicWarBox_init(
     string memory name,
     string memory symbol,
     string memory _uri,
-    address _signer,
     address _fundWallet,
     address _VRFContract
   ) public initializer {
@@ -109,7 +108,6 @@ contract EpicWarBox is
     ERC721Upgradeable.__ERC721_init(name, symbol);
 
     uri = _uri;
-    signer = _signer;
     fundWallet = _fundWallet;
     VRFContract = _VRFContract;
     allowTransfer = false;
@@ -117,14 +115,14 @@ contract EpicWarBox is
   }
 
   function createEvent(
-    uint256 _eventID,
-    string memory _eventType,
-    uint256 _totalSupply,
+    uint16 _eventID,
+    string calldata _eventType,
+    uint16 _totalSupply,
     uint256 _price,
     address _currency,
     uint256 _startTime,
     uint256 _endTime,
-    uint256 _maxBuy,
+    uint16 _maxBuy,
     uint256 _openBoxTime,
     address _nftContract
   ) external onlyOwner {
@@ -146,6 +144,7 @@ contract EpicWarBox is
       0
     );
     eventStartId += _totalSupply;
+
     emit EventCreated(
       _totalSupply,
       _price,
@@ -159,18 +158,46 @@ contract EpicWarBox is
     );
   }
 
+  function addBoxID(uint16 _eventID, uint16[] calldata _boxIDList)
+    public
+    onlyOwner
+  {
+    EventInfo storage eventInfo = eventByID[_eventID];
+    require(
+      _boxIDList.length == eventInfo.totalSupply,
+      "Box list not equal total supply"
+    );
+
+    ranIDByEvent[_eventID] = _boxIDList;
+  }
+
+  function getBoxID(uint16 _eventID)
+    public
+    view
+    onlyOwner
+    returns (uint16[] memory)
+  {
+    return ranIDByEvent[_eventID];
+  }
+
   function addBox(
-    uint256 _eventID,
-    uint256[] memory _quantity,
-    string[] memory _boxName,
-    string[] memory _boxImageUri
+    uint16 _eventID,
+    uint16[] calldata _quantity,
+    string[] calldata _boxName,
+    string[] calldata _boxImageUri
   ) public onlyOwner {
     require(
       _quantity.length == _boxName.length &&
         _boxName.length == _boxImageUri.length,
       "Box data error"
     );
-    for (uint256 index = 0; index < _quantity.length; index++) {
+    uint16 numBox = 0;
+    for (uint16 index = 0; index < _quantity.length; index++) {
+      numBox += _quantity[index];
+    }
+    EventInfo storage eventInfo = eventByID[_eventID];
+    require(numBox == eventInfo.totalSupply, "Quantity not equal total supply");
+    for (uint16 index = 0; index < _quantity.length; index++) {
       boxesByEvent[_eventID][index] = BoxList(
         _quantity[index],
         0,
@@ -181,9 +208,9 @@ contract EpicWarBox is
   }
 
   function buyBox(
-    uint256 _eventID,
-    uint256 _amount,
-    uint256 _indexBoxList,
+    uint16 _eventID,
+    uint16 _amount,
+    uint16 _indexBoxList,
     address _token
   ) public payable nonReentrant {
     EventInfo storage eventInfo = eventByID[_eventID];
@@ -193,6 +220,7 @@ contract EpicWarBox is
         _amount + userBought[_eventID][msg.sender] <= eventInfo.maxBuy,
       "Rate limit exceeded"
     );
+
     require(block.timestamp >= eventInfo.startTime, "Sale has not started");
     require(block.timestamp <= eventInfo.endTime, "Sale has ended");
     require(_token == eventInfo.currency, "Invalid token");
@@ -206,8 +234,8 @@ contract EpicWarBox is
     }
 
     _fowardFund(totalFund, _token);
-    for (uint256 i = 0; i < _amount; i++) {
-      uint256 boxID = eventInfo.boxCount + eventInfo.startID + 1;
+    for (uint16 i = 0; i < _amount; i++) {
+      uint256 boxID = uint256(eventInfo.boxCount) + eventInfo.startID + 1;
       _safeMint(msg.sender, boxID);
       boxByEvent[boxID] = _eventID;
       userBought[_eventID][msg.sender] += 1;
@@ -229,25 +257,25 @@ contract EpicWarBox is
   }
 
   function mintBox(
-    uint256 _eventID,
-    uint256 _amount,
-    uint256 _indexBoxList
-  ) public onlyOwner nonReentrant{
+    uint16 _eventID,
+    address[] calldata _adds,
+    uint16 _indexBoxList
+  ) public onlyOwner nonReentrant {
     EventInfo storage eventInfo = eventByID[_eventID];
 
     BoxList storage boxes = boxesByEvent[_eventID][_indexBoxList];
 
-    require(boxes.quantity - boxes.bought >= _amount, "sold out");
+    require(boxes.quantity - boxes.bought >= _adds.length, "sold out");
 
-    for (uint256 i = 0; i < _amount; i++) {
-      uint256 boxID = eventInfo.boxCount + eventInfo.startID + 1;
-      _safeMint(msg.sender, boxID);
+    for (uint16 i = 0; i < _adds.length; i++) {
+      uint256 boxID = uint256(eventInfo.boxCount) + eventInfo.startID + 1;
+      _safeMint(_adds[i], boxID);
       boxByEvent[boxID] = _eventID;
-      userBought[_eventID][msg.sender] += 1;
+      userBought[_eventID][_adds[i]] += 1;
       eventInfo.boxCount += 1;
       emit BoxCreated(
         boxID,
-        msg.sender,
+        _adds[i],
         _eventID,
         eventInfo.eventType,
         boxes.uriImage,
@@ -257,8 +285,7 @@ contract EpicWarBox is
         eventInfo.currency
       );
     }
-
-    boxes.bought += _amount;
+    boxes.bought += uint16(_adds.length);
   }
 
   function _fowardFund(uint256 _amount, address _token) internal {
@@ -289,7 +316,7 @@ contract EpicWarBox is
   }
 
   function updateOpenBoxInfo(
-    uint256 _eventID,
+    uint16 _eventID,
     uint256 _openBoxTime,
     address _nftContract
   ) public onlyOwner {
@@ -299,7 +326,7 @@ contract EpicWarBox is
   }
 
   function updateEventTimeInfo(
-    uint256 _eventID,
+    uint16 _eventID,
     uint256 _startTime,
     uint256 _endTime
   ) public onlyOwner {
@@ -310,7 +337,7 @@ contract EpicWarBox is
   }
 
   function updateEventPriceInfo(
-    uint256 _eventID,
+    uint16 _eventID,
     uint256 _price,
     address _currency
   ) public onlyOwner {
@@ -320,10 +347,10 @@ contract EpicWarBox is
   }
 
   function updateEventTotalSupplyInfo(
-    uint256 _eventID,
-    uint256 _totalSupply,
+    uint16 _eventID,
+    uint16 _totalSupply,
     uint256 _startID,
-    uint256 _maxBuy
+    uint16 _maxBuy
   ) public onlyOwner {
     EventInfo storage eventInfo = eventByID[_eventID];
     eventInfo.totalSupply = _totalSupply;
@@ -331,7 +358,7 @@ contract EpicWarBox is
     eventInfo.maxBuy = _maxBuy;
   }
 
-  function updateBoxEventCount(uint256 _eventID, uint256 _count)
+  function updateBoxEventCount(uint16 _eventID, uint16 _count)
     public
     onlyOwner
   {
@@ -339,21 +366,27 @@ contract EpicWarBox is
     eventInfo.boxCount = _count;
   }
 
-  function requestRandomNumber(uint256 _eventID) public onlyOwner {
+  function setBaseURI(string memory _uri) external onlyOwner {
+    uri = _uri;
+  }
+
+  function _baseURI() internal view override returns (string memory) {
+    return uri;
+  }
+
+  function requestRandomNumber(uint16 _eventID) public onlyOwner {
+    EventInfo storage eventInfo = eventByID[_eventID];
+    require(eventInfo.openBoxTime > block.timestamp, "Open box has started");
     IEpicWarNumber(VRFContract).getEventRandomNumber(_eventID);
   }
 
-  function setRandomNumber(uint256 _eventID, uint256 _randomness) external {
+  function setRandomNumber(uint16 _eventID, uint256 _randomness) external {
     require(msg.sender == VRFContract, "VRFContract invalid");
     randomNumber[_eventID] = _randomness;
   }
 
   function setFundWallet(address _fund) public onlyOwner {
     fundWallet = _fund;
-  }
-
-  function setBaseURI(string memory baseURI) public onlyOwner {
-    uri = baseURI;
   }
 
   function setVRFContract(address _VRFContract) public onlyOwner {
@@ -367,7 +400,7 @@ contract EpicWarBox is
   }
 
   // Open box
-  function openBox(uint256 _boxId, uint256 _eventID) public nonReentrant {
+  function openBox(uint256 _boxId, uint16 _eventID) public {
     require(boxByEvent[_boxId] == _eventID, "Box not in event");
     EventInfo storage eventInfo = eventByID[_eventID];
     require(ownerOf(_boxId) == msg.sender, "User must be owner of box!");
@@ -376,26 +409,33 @@ contract EpicWarBox is
       "Open box has not started"
     );
     uint256 rand = randomNumber[_eventID] % eventInfo.totalSupply;
-    uint256 nftId = ((_boxId + rand) % eventInfo.totalSupply) +
-      eventInfo.startID; //random boxId to nftId
-
+    uint256 nftId = ((_boxId + rand) % eventInfo.totalSupply); //random boxId to nftId
+    uint16[] memory randBoxList = ranIDByEvent[_eventID];
     //mint nft from nft contract & burn box nft
-    IEpicWarNFT(eventInfo.nftContract).mintNft(msg.sender, nftId);
+    IEpicWarNFT(eventInfo.nftContract).mintNft(
+      msg.sender,
+      randBoxList[nftId] + eventInfo.startID
+    );
     _burn(_boxId);
-    emit BoxOpened(msg.sender, _boxId, nftId, _eventID);
+    emit BoxOpened(
+      msg.sender,
+      _boxId,
+      randBoxList[nftId] + eventInfo.startID,
+      _eventID
+    );
   }
 
   function emergencyWithdrawNFT(
-    uint256 _eventID,
+    uint16 _eventID,
     uint256 _id,
     address _to
-  ) public onlyOwner nonReentrant{
+  ) public onlyOwner nonReentrant {
     // transfer NFT from owner
     EventInfo storage eventInfo = eventByID[_eventID];
     IERC721(eventInfo.nftContract).safeTransferFrom(address(this), _to, _id);
   }
 
-  function openSelectedBox(uint256[] memory nftIds) public nonReentrant{
+  function openSelectedBox(uint256[] calldata nftIds) public nonReentrant {
     require(nftIds.length > 0, "Not open any box?");
     for (uint256 index = 0; index < nftIds.length; index++) {
       require(
@@ -406,7 +446,7 @@ contract EpicWarBox is
     }
   }
 
-  function openAllBox() public nonReentrant{
+  function openAllBox() public nonReentrant {
     uint256 userBox = balanceOf(msg.sender);
     require(userBox > 0, "User not owner of any box");
     for (uint256 index = 0; index < userBox; index++) {
